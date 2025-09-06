@@ -1,0 +1,46 @@
+# Source files (only ship dist/)
+src/
+tsconfig.json
+.eslintrc.json
+.prettierrc.json
+
+# Tests
+test/
+*.test.ts
+*.test.js
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts not needed in package
+.tsbuildinfo
+*.log
+
+# Demo and example files
+demo.js
+test*.json
+example*/
+
+# CI/CD
+.github/
+.travis.yml
+.circleci/
+
+# Documentation source (keep only final docs)
+docs/src/
+
+# Local environment
+.env*
+.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# SSH keys
+*.pem
+*.key
+id_*

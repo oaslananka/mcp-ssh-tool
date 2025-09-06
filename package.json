@@ -1,0 +1,92 @@
+{
+  "name": "mcp-ssh-tool",
+  "version": "1.0.0",
+  "description": "Model Context Protocol (MCP) SSH client server for remote automation",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": "./dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "mcp-ssh-tool": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "test": "jest",
+    "lint": "echo 'Lint check skipped for now'",
+    "format": "prettier --write src/**/*.ts",
+    "prepare": "npm run build",
+    "e2e": "RUN_SSH_E2E=1 jest --testPathPattern=e2e"
+  },
+  "keywords": [
+    "mcp",
+    "ssh",
+    "copilot",
+    "automation",
+    "remote",
+    "model-context-protocol",
+    "github-copilot",
+    "ssh-client",
+    "devops",
+    "infrastructure"
+  ],
+  "author": "Osman Aslan <oaslananka>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oaslananka/mcp-ssh-tool.git"
+  },
+  "homepage": "https://github.com/oaslananka/mcp-ssh-tool#readme",
+  "bugs": {
+    "url": "https://github.com/oaslananka/mcp-ssh-tool/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "commander": "^14.0.0",
+    "node-ssh": "^13.2.1",
+    "ssh2-sftp-client": "^12.0.1",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.1.2",
+    "@types/node": "^24.3.1",
+    "@types/ssh2-sftp-client": "^9.0.5",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "eslint": "^9.35.0",
+    "jest": "^30.1.3",
+    "prettier": "^3.6.2",
+    "ts-jest": "^29.4.1",
+    "typescript": "^5.9.2"
+  },
+  "jest": {
+    "preset": "ts-jest/presets/default-esm",
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
+    "globals": {
+      "ts-jest": {
+        "useESM": true
+      }
+    },
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/test"
+    ],
+    "testMatch": [
+      "**/*.test.ts"
+    ],
+    "moduleNameMapping": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    }
+  }
+}
