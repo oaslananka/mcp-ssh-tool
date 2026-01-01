@@ -9,14 +9,14 @@ import { z } from 'zod';
 // Import our modules
 import { sessionManager } from './session.js';
 import { execCommand, execSudo } from './process.js';
-import { 
-  readFile, 
-  writeFile, 
-  statFile, 
-  listDirectory, 
-  makeDirectories, 
-  removeRecursive, 
-  renameFile 
+import {
+  readFile,
+  writeFile,
+  statFile,
+  listDirectory,
+  makeDirectories,
+  removeRecursive,
+  renameFile
 } from './fs-tools.js';
 import {
   ensurePackage,
@@ -26,6 +26,8 @@ import {
 } from './ensure.js';
 import { detectOS } from './detect.js';
 import { logger, redactSensitiveData } from './logging.js';
+import { getConfiguredHosts, resolveSSHHost } from './ssh-config.js';
+import { addSafetyWarningToResult } from './safety.js';
 import {
   ConnectionParamsSchema,
   SessionIdSchema,
@@ -81,10 +83,10 @@ export class SSHMCPServer {
                 host: { type: 'string', description: 'SSH server hostname or IP' },
                 username: { type: 'string', description: 'SSH username' },
                 port: { type: 'number', description: 'SSH port (default: 22)' },
-                auth: { 
-                  type: 'string', 
+                auth: {
+                  type: 'string',
                   enum: ['auto', 'password', 'key', 'agent'],
-                  description: 'Authentication method (default: auto)' 
+                  description: 'Authentication method (default: auto)'
                 },
                 password: { type: 'string', description: 'Password for authentication' },
                 privateKey: { type: 'string', description: 'Inline private key content' },
@@ -296,6 +298,48 @@ export class SSHMCPServer {
               },
               required: ['sessionId']
             }
+          },
+
+          // Session utilities
+          {
+            name: 'ssh_listSessions',
+            description: 'Lists all active SSH sessions with their details',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              required: []
+            }
+          },
+          {
+            name: 'ssh_ping',
+            description: 'Checks if an SSH session is still alive and responsive',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                sessionId: { type: 'string', description: 'SSH session ID to check' }
+              },
+              required: ['sessionId']
+            }
+          },
+          {
+            name: 'ssh_listConfiguredHosts',
+            description: 'Lists all hosts configured in ~/.ssh/config',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              required: []
+            }
+          },
+          {
+            name: 'ssh_resolveHost',
+            description: 'Resolves a host alias from ~/.ssh/config to connection parameters',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                hostAlias: { type: 'string', description: 'Host alias from SSH config' }
+              },
+              required: ['hostAlias']
+            }
           }
         ]
       };
@@ -324,20 +368,25 @@ export class SSHMCPServer {
           case 'proc_exec': {
             const params = ExecSchema.parse(args);
             const result = await execCommand(
-              params.sessionId, 
-              params.command, 
-              params.cwd, 
-              params.env as Record<string, string>
+              params.sessionId,
+              params.command,
+              params.cwd,
+              params.env as Record<string, string>,
+              params.timeoutMs
             );
+            // Add safety warning (never blocks, only warns)
+            const resultWithWarning = addSafetyWarningToResult(params.command, result);
             logger.info('Command executed', { sessionId: params.sessionId, command: redactSensitiveData(params.command) });
-            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+            return { content: [{ type: 'text', text: JSON.stringify(resultWithWarning, null, 2) }] };
           }
 
           case 'proc_sudo': {
             const params = SudoSchema.parse(args);
-            const result = await execSudo(params.sessionId, params.command, params.password, params.cwd);
+            const result = await execSudo(params.sessionId, params.command, params.password, params.cwd, params.timeoutMs);
+            // Add safety warning (never blocks, only warns)
+            const resultWithWarning = addSafetyWarningToResult(params.command, result);
             logger.info('Sudo command executed', { sessionId: params.sessionId, command: redactSensitiveData(params.command) });
-            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+            return { content: [{ type: 'text', text: JSON.stringify(resultWithWarning, null, 2) }] };
           }
 
           case 'fs_read': {
@@ -426,6 +475,78 @@ export class SSHMCPServer {
             const result = await detectOS(session.ssh);
             logger.info('OS detected', { sessionId });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+          }
+
+          case 'ssh_listSessions': {
+            const sessions = sessionManager.getActiveSessions();
+            const result = {
+              count: sessions.length,
+              sessions: sessions.map(s => ({
+                sessionId: s.sessionId,
+                host: s.host,
+                username: s.username,
+                port: s.port,
+                createdAt: new Date(s.createdAt).toISOString(),
+                expiresAt: new Date(s.expiresAt).toISOString(),
+                lastUsed: new Date(s.lastUsed).toISOString(),
+                remainingMs: Math.max(0, s.expiresAt - Date.now())
+              }))
+            };
+            logger.info('Sessions listed', { count: sessions.length });
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+          }
+
+          case 'ssh_ping': {
+            const { sessionId } = SessionIdSchema.parse(args);
+            const session = sessionManager.getSession(sessionId);
+            if (!session) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: JSON.stringify({ alive: false, error: 'Session not found or expired' }, null, 2)
+                }]
+              };
+            }
+
+            try {
+              const startTime = Date.now();
+              const pingResult = await session.ssh.execCommand('echo pong');
+              const latencyMs = Date.now() - startTime;
+
+              const result = {
+                alive: pingResult.code === 0,
+                latencyMs,
+                sessionId,
+                host: session.info.host,
+                remainingMs: Math.max(0, session.info.expiresAt - Date.now())
+              };
+              logger.info('Session ping', { sessionId, alive: result.alive, latencyMs });
+              return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+            } catch (error) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: JSON.stringify({ alive: false, error: 'Connection test failed' }, null, 2)
+                }]
+              };
+            }
+          }
+
+          case 'ssh_listConfiguredHosts': {
+            const hosts = await getConfiguredHosts();
+            const result = {
+              count: hosts.length,
+              hosts
+            };
+            logger.info('Configured hosts listed', { count: hosts.length });
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+          }
+
+          case 'ssh_resolveHost': {
+            const { hostAlias } = z.object({ hostAlias: z.string() }).parse(args);
+            const resolved = await resolveSSHHost(hostAlias);
+            logger.info('Host resolved', { hostAlias, resolved: resolved.host });
+            return { content: [{ type: 'text', text: JSON.stringify(resolved, null, 2) }] };
           }
 
           default:

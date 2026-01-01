@@ -191,14 +191,16 @@ export const ExecSchema = z.object({
   sessionId: z.string().min(1),
   command: z.string().min(1),
   cwd: z.string().optional(),
-  env: z.record(z.string(), z.string()).optional()
+  env: z.record(z.string(), z.string()).optional(),
+  timeoutMs: z.number().min(1000).optional().describe('Command execution timeout in milliseconds')
 });
 
 export const SudoSchema = z.object({
   sessionId: z.string().min(1),
   command: z.string().min(1),
   password: z.string().optional(),
-  cwd: z.string().optional()
+  cwd: z.string().optional(),
+  timeoutMs: z.number().min(1000).optional().describe('Command execution timeout in milliseconds')
 });
 
 export const FSReadSchema = z.object({

@@ -1,0 +1,41 @@
+# Docker Test Environment for MCP-SSH-Tool
+
+services:
+  ssh-server:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: mcp-ssh-test
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - PUBLIC_KEY_FILE=/config/.ssh/authorized_keys
+      - SUDO_ACCESS=true
+      - PASSWORD_ACCESS=true
+      - USER_PASSWORD=testpass
+      - USER_NAME=testuser
+    volumes:
+      - ./test/ssh-keys:/config/.ssh:ro
+    ports:
+      - "2222:2222"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2222"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Optional: Run tests against the SSH server
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      ssh-server:
+        condition: service_healthy
+    environment:
+      - RUN_SSH_E2E=1
+      - TEST_SSH_HOST=ssh-server
+      - TEST_SSH_PORT=2222
+      - TEST_SSH_USER=testuser
+      - TEST_SSH_PASS=testpass
+    command: npm run e2e

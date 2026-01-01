@@ -44,7 +44,11 @@ Once configured, you can use natural language with GitHub Copilot:
 
 - `ssh.openSession` - Establish SSH connection with various auth methods
 - `ssh.closeSession` - Close SSH session
-- `proc.exec` - Execute commands remotely
+- `ssh.listSessions` - List all active SSH sessions
+- `ssh.ping` - Check if a session is alive and responsive
+- `ssh.listConfiguredHosts` - List hosts from ~/.ssh/config
+- `ssh.resolveHost` - Resolve host alias from SSH config
+- `proc.exec` - Execute commands remotely (with optional timeout)
 - `proc.sudo` - Execute commands with sudo privileges
 - `fs.read`, `fs.write`, `fs.list`, `fs.stat`, `fs.mkdirp`, `fs.rmrf`, `fs.rename` - File system operations
 - `ensure.package` - Package management
