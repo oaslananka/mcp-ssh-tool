@@ -8,13 +8,10 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=UTC
-      - PUBLIC_KEY_FILE=/config/.ssh/authorized_keys
       - SUDO_ACCESS=true
       - PASSWORD_ACCESS=true
       - USER_PASSWORD=testpass
       - USER_NAME=testuser
-    volumes:
-      - ./test/ssh-keys:/config/.ssh:ro
     ports:
       - "2222:2222"
     restart: unless-stopped

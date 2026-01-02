@@ -20,7 +20,8 @@
     "lint": "echo 'Lint check skipped for now'",
     "format": "prettier --write src/**/*.ts",
     "prepare": "npm run build",
-    "e2e": "RUN_SSH_E2E=1 jest --testPathPattern=e2e",
+    "e2e": "jest --testPathPattern=e2e",
+    "e2e:docker": "docker-compose up -d ssh-server && npm run e2e",
     "docs": "npx typedoc --out docs src/index.ts"
   },
   "keywords": [
@@ -75,11 +76,6 @@
     "extensionsToTreatAsEsm": [
       ".ts"
     ],
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
     "testEnvironment": "node",
     "roots": [
       "<rootDir>/test"
@@ -87,8 +83,16 @@
     "testMatch": [
       "**/*.test.ts"
     ],
-    "moduleNameMapping": {
+    "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "transform": {
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "useESM": true
+        }
+      ]
     },
     "collectCoverageFrom": [
       "src/**/*.ts",

@@ -33,8 +33,8 @@ describe('SSH MCP Server E2E Tests', () => {
       return;
     }
 
-    // Import session manager
-    const sessionModule = await import('../../dist/session.js');
+    // Import session manager from source
+    const sessionModule = await import('../../src/session.js');
     sessionManager = sessionModule.sessionManager;
   });
 
@@ -87,7 +87,7 @@ describe('SSH MCP Server E2E Tests', () => {
 
   describe('Command Execution', () => {
     e2eTest('should execute basic commands', async () => {
-      const { execCommand } = await import('../../dist/process.js');
+      const { execCommand } = await import('../../src/process.js');
 
       const result = await execCommand(sessionId, 'echo "Hello World"');
 
@@ -99,7 +99,7 @@ describe('SSH MCP Server E2E Tests', () => {
     });
 
     e2eTest('should execute commands with environment variables', async () => {
-      const { execCommand } = await import('../../dist/process.js');
+      const { execCommand } = await import('../../src/process.js');
 
       const result = await execCommand(sessionId, 'echo $MY_VAR', undefined, { MY_VAR: 'test123' });
 
@@ -110,7 +110,7 @@ describe('SSH MCP Server E2E Tests', () => {
     });
 
     e2eTest('should execute commands with working directory', async () => {
-      const { execCommand } = await import('../../dist/process.js');
+      const { execCommand } = await import('../../src/process.js');
 
       const result = await execCommand(sessionId, 'pwd', '/tmp');
 
@@ -121,7 +121,7 @@ describe('SSH MCP Server E2E Tests', () => {
     });
 
     e2eTest('should handle command timeout', async () => {
-      const { execCommand } = await import('../../dist/process.js');
+      const { execCommand } = await import('../../src/process.js');
 
       await expect(
         execCommand(sessionId, 'sleep 10', undefined, undefined, 1000)
@@ -136,7 +136,7 @@ describe('SSH MCP Server E2E Tests', () => {
     const testContent = 'Hello from MCP SSH Tool!';
 
     e2eTest('should write a file', async () => {
-      const { writeFile } = await import('../../dist/fs-tools.js');
+      const { writeFile } = await import('../../src/fs-tools.js');
 
       const result = await writeFile(sessionId, testFilePath, testContent);
 
@@ -145,7 +145,7 @@ describe('SSH MCP Server E2E Tests', () => {
     });
 
     e2eTest('should read a file', async () => {
-      const { readFile } = await import('../../dist/fs-tools.js');
+      const { readFile } = await import('../../src/fs-tools.js');
 
       const content = await readFile(sessionId, testFilePath);
 
@@ -154,7 +154,7 @@ describe('SSH MCP Server E2E Tests', () => {
     });
 
     e2eTest('should stat a file', async () => {
-      const { statFile } = await import('../../dist/fs-tools.js');
+      const { statFile } = await import('../../src/fs-tools.js');
 
       const stats = await statFile(sessionId, testFilePath);
 
@@ -164,7 +164,7 @@ describe('SSH MCP Server E2E Tests', () => {
     });
 
     e2eTest('should list directory', async () => {
-      const { listDirectory } = await import('../../dist/fs-tools.js');
+      const { listDirectory } = await import('../../src/fs-tools.js');
 
       const entries = await listDirectory(sessionId, '/tmp');
 
@@ -174,7 +174,7 @@ describe('SSH MCP Server E2E Tests', () => {
     });
 
     e2eTest('should create directory', async () => {
-      const { makeDirectories } = await import('../../dist/fs-tools.js');
+      const { makeDirectories } = await import('../../src/fs-tools.js');
 
       const result = await makeDirectories(sessionId, '/tmp/mcp-test-dir/nested');
 
@@ -183,7 +183,7 @@ describe('SSH MCP Server E2E Tests', () => {
     });
 
     e2eTest('should remove file and directory', async () => {
-      const { removeRecursive } = await import('../../dist/fs-tools.js');
+      const { removeRecursive } = await import('../../src/fs-tools.js');
 
       await removeRecursive(sessionId, testFilePath);
       await removeRecursive(sessionId, '/tmp/mcp-test-dir');
@@ -195,7 +195,7 @@ describe('SSH MCP Server E2E Tests', () => {
   describe('OS Detection', () => {
     e2eTest('should detect OS information', async () => {
       const session = sessionManager.getSession(sessionId);
-      const { detectOS } = await import('../../dist/detect.js');
+      const { detectOS } = await import('../../src/detect.js');
 
       const osInfo = await detectOS(session.ssh);
 
@@ -207,7 +207,7 @@ describe('SSH MCP Server E2E Tests', () => {
 
   describe('Streaming Output', () => {
     e2eTest('should stream command output', async () => {
-      const { execWithStreaming } = await import('../../dist/streaming.js');
+      const { execWithStreaming } = await import('../../src/streaming.js');
 
       const chunks: any[] = [];
       const result = await execWithStreaming({
