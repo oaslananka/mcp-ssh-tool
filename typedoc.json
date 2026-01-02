@@ -1,0 +1,25 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "entryPoints": [
+        "src/index.ts"
+    ],
+    "out": "docs",
+    "name": "MCP-SSH-Tool API Documentation",
+    "readme": "README.md",
+    "includeVersion": true,
+    "excludePrivate": true,
+    "excludeInternal": true,
+    "plugin": [],
+    "theme": "default",
+    "hideGenerator": false,
+    "searchInComments": true,
+    "categorizeByGroup": true,
+    "sort": [
+        "source-order"
+    ],
+    "visibilityFilters": {
+        "protected": true,
+        "inherited": true,
+        "external": false
+    }
+}

@@ -28,6 +28,9 @@ import { detectOS } from './detect.js';
 import { logger, redactSensitiveData } from './logging.js';
 import { getConfiguredHosts, resolveSSHHost } from './ssh-config.js';
 import { addSafetyWarningToResult } from './safety.js';
+import { execWithStreaming } from './streaming.js';
+import { createLocalForward, createRemoteForward, closeTunnel, listTunnels } from './tunnel.js';
+import { uploadFileWithProgress, downloadFileWithProgress } from './transfer.js';
 import {
   ConnectionParamsSchema,
   SessionIdSchema,

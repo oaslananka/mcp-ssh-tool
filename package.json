@@ -16,10 +16,12 @@
     "build": "tsc",
     "dev": "tsc -w",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "lint": "echo 'Lint check skipped for now'",
     "format": "prettier --write src/**/*.ts",
     "prepare": "npm run build",
-    "e2e": "RUN_SSH_E2E=1 jest --testPathPattern=e2e"
+    "e2e": "RUN_SSH_E2E=1 jest --testPathPattern=e2e",
+    "docs": "npx typedoc --out docs src/index.ts"
   },
   "keywords": [
     "mcp",
@@ -87,6 +89,24 @@
     ],
     "moduleNameMapping": {
       "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/**/*.d.ts"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 50,
+        "functions": 50,
+        "lines": 50,
+        "statements": 50
+      }
     }
   }
 }
