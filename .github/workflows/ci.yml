@@ -44,7 +44,7 @@ jobs:
 
       - name: Smoke listTools
         run: |
-          echo "{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"tools/list\"}" | node dist/index.js
+          node -e "process.stdout.write(JSON.stringify({jsonrpc:'2.0', id:'1', method:'tools/list'}))" | node dist/index.js
 
       - name: Smoke run (stdio startup)
         run: echo "{}" | node dist/index.js
