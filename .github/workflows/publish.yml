@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -12,6 +16,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Guard - git tag must match package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VER="$(node -p "require('./package.json').version")"
+          echo "tag=${TAG} package.json=${VER}"
+          test "$TAG" = "$VER"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -22,6 +33,16 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - name: Guard - version must not already exist on npm
+        run: |
+          PKG_NAME="$(node -p "require('./package.json').name")"
+          PKG_VER="$(node -p "require('./package.json').version")"
+          echo "Checking ${PKG_NAME}@${PKG_VER} on npm..."
+          if npm view "${PKG_NAME}@${PKG_VER}" version --silent > /dev/null 2>&1; then
+            echo "ERROR: ${PKG_NAME}@${PKG_VER} already exists on npm. Bump version."
+            exit 1
+          fi
 
       - name: Lint
         run: npm run lint
