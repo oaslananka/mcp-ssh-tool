@@ -22,3 +22,7 @@ Thumbs.db
 *.pem
 *.key
 id_*
+
+
+# Package files
+*.tgz
