@@ -43,6 +43,8 @@ jobs:
           node dist/index.js --version
 
       - name: Smoke listTools
+        env:
+          SSH_MCP_ONESHOT: "true"
         run: |
           node -e "process.stdout.write(JSON.stringify({jsonrpc:'2.0', id:'1', method:'tools/list'}))" | node dist/index.js
 
