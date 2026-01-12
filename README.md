@@ -8,15 +8,14 @@ A Model Context Protocol (MCP) SSH client server that provides autonomous SSH op
 
 ## Quick Start
 
-### Installation
+### Install
 
-```bash
-npm install -g mcp-ssh-tool
-```
+- Global install (recommended): `npm install -g mcp-ssh-tool`
+- One-off run: `npx mcp-ssh-tool`
 
-### VS Code Configuration
+### MCP Client Configuration (VS Code / Claude Desktop / others)
 
-Add to your MCP configuration (`mcp.json` or settings):
+Add to your MCP configuration (`mcp.json`, `.vscode/mcp.json`, or the Claude Desktop MCP config):
 
 ```json
 {
@@ -32,7 +31,7 @@ Add to your MCP configuration (`mcp.json` or settings):
 
 ### Usage Examples
 
-Once configured, you can use natural language with GitHub Copilot:
+Once configured, you can use natural language with your MCP client:
 
 - **SSH Connection**: "Connect to server 192.168.1.100 as admin using SSH key"
 - **File Operations**: "Read the content of /etc/nginx/nginx.conf on the server"
@@ -86,7 +85,7 @@ The SSH MCP Server acts as a bridge between GitHub Copilot and remote systems vi
 
 ### Prerequisites
 
-- Node.js ≥ 20 (LTS)
+- Node.js ≥ 18 (LTS)
 - SSH access to target systems
 - SSH keys or credentials for authentication
 
@@ -105,6 +104,12 @@ npm install
 npm run build
 npm link
 ```
+
+### Platform Notes
+
+- **Linux / macOS:** Uses POSIX shell wrappers with safe quoting. Default temp directory: `/tmp`.
+- **Windows targets:** Requires OpenSSH server/agent; key discovery checks `C:\\Users\\<you>\\.ssh\\`. Commands are wrapped for PowerShell-safe execution. Package/service helpers are intentionally disabled on Windows targets.
+- **Host keys:** Host key checking is relaxed by default. Set `STRICT_HOST_KEY_CHECKING=true` and optionally `KNOWN_HOSTS_PATH` to enforce verification.
 
 ## VS Code Copilot Integration
 
@@ -447,12 +452,15 @@ Detects operating system information, package manager, and init system.
 
 ```json
 {
+  "platform": "linux",
   "distro": "ubuntu",
   "version": "22.04",
   "arch": "x86_64",
   "shell": "bash",
   "packageManager": "apt",
-  "init": "systemd"
+  "init": "systemd",
+  "defaultShell": "bash",
+  "tempDir": "/tmp"
 }
 ```
 
@@ -569,6 +577,7 @@ Sensitive data is automatically redacted from logs:
 - Private keys
 - Passphrases
 - Sudo passwords
+- SSH agent socket paths
 
 ### Connection Security
 
@@ -601,8 +610,10 @@ npm run build      # Compile TypeScript
 npm run dev        # Watch mode compilation
 npm run test       # Run unit tests
 npm run e2e        # Run E2E tests (requires RUN_SSH_E2E=1)
-npm run lint       # Run ESLint
+npm run lint       # Type-check (no emit)
 npm run format     # Run Prettier
+npm run test:coverage
+npm run docs
 ```
 
 ### Testing

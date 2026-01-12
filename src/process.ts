@@ -1,8 +1,9 @@
 import { ExecResult } from './types.js';
 import { createSudoError, wrapError, createTimeoutError } from './errors.js';
 import { logger, createTimer } from './logging.js';
-import { sessionManager, SSHSession } from './session.js';
+import { sessionManager } from './session.js';
 import { ErrorCode } from './types.js';
+import { buildRemoteCommand, buildSudoCommand } from './shell.js';
 
 /**
  * Executes a command on the remote system with optional timeout
@@ -21,27 +22,11 @@ export async function execCommand(
     throw new Error(`Session ${sessionId} not found or expired`);
   }
 
+  const osInfo = await sessionManager.getOSInfo(sessionId);
   const timer = createTimer();
 
   try {
-    // Build the command with environment and working directory
-    let fullCommand = command;
-
-    // Set environment variables if provided
-    if (env && Object.keys(env).length > 0) {
-      const envVars = Object.entries(env)
-        .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
-        .join(' ');
-      fullCommand = `${envVars} ${command}`;
-    }
-
-    // Change directory if provided
-    if (cwd) {
-      fullCommand = `cd ${JSON.stringify(cwd)} && ${fullCommand}`;
-    }
-
-    // Try bash first, fallback to sh if bash is not available
-    const shellCommand = `if command -v bash >/dev/null 2>&1; then bash -lc ${JSON.stringify(fullCommand)}; else sh -lc ${JSON.stringify(fullCommand)}; fi`;
+    const shellCommand = buildRemoteCommand(command, osInfo, cwd, env);
 
     // Execute with optional timeout
     let result;
@@ -100,26 +85,19 @@ export async function execSudo(
     throw new Error(`Session ${sessionId} not found or expired`);
   }
 
+  const osInfo = await sessionManager.getOSInfo(sessionId);
+
+  if (osInfo.platform === 'windows') {
+    throw createSudoError(
+      'Sudo is not supported on Windows hosts',
+      'Use an elevated session instead of sudo commands'
+    );
+  }
+
   const timer = createTimer();
 
   try {
-    // Build the sudo command
-    let sudoCommand = command;
-
-    // Change directory if provided
-    if (cwd) {
-      sudoCommand = `cd ${JSON.stringify(cwd)} && ${command}`;
-    }
-
-    let fullCommand: string;
-
-    if (password) {
-      // Use sudo -S -n to read password from stdin and never prompt
-      fullCommand = `echo ${JSON.stringify(password)} | sudo -S -n ${sudoCommand}`;
-    } else {
-      // Try without password using -n (never prompt for password)
-      fullCommand = `sudo -n ${sudoCommand}`;
-    }
+    const fullCommand = buildSudoCommand(command, osInfo, password, cwd);
 
     // Execute with optional timeout
     let result;

@@ -1,13 +1,18 @@
 {
   "name": "mcp-ssh-tool",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Model Context Protocol (MCP) SSH client server for remote automation",
   "type": "module",
   "main": "dist/index.js",
   "exports": "./dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "mcp.json",
+    "README.md",
+    "LICENSE",
+    "REGISTRY_SUBMISSION.md",
+    "registry"
   ],
   "bin": {
     "mcp-ssh-tool": "dist/index.js"
@@ -17,9 +22,10 @@
     "dev": "tsc -w",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "lint": "echo 'Lint check skipped for now'",
+    "lint": "tsc --noEmit",
     "format": "prettier --write src/**/*.ts",
     "prepare": "npm run build",
+    "prepublishOnly": "npm run lint && npm test && npm run build",
     "e2e": "jest --testPathPattern=e2e",
     "e2e:docker": "docker-compose up -d ssh-server && npm run e2e",
     "docs": "npx typedoc --out docs src/index.ts"
@@ -50,7 +56,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",

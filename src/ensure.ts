@@ -1,10 +1,10 @@
-import { PackageResult, ServiceResult, LinesInFileResult, PatchResult } from './types.js';
+import { PackageManager, PackageResult, ServiceResult, LinesInFileResult, PatchResult } from './types.js';
 import { createPackageManagerError, createSudoError, createFilesystemError, createPatchError } from './errors.js';
 import { logger } from './logging.js';
 import { execCommand, execSudo, commandExists } from './process.js';
 import { readFile, writeFile, pathExists } from './fs-tools.js';
-import { detectOS } from './detect.js';
 import { sessionManager } from './session.js';
+import { resolveRemoteTempDir } from './shell.js';
 
 /**
  * Ensures a package is installed on the system
@@ -23,13 +23,19 @@ export async function ensurePackage(
   
   try {
     // Detect OS and package manager
-    const osInfo = await detectOS(session.ssh);
+    const osInfo = await sessionManager.getOSInfo(sessionId);
     const pm = osInfo.packageManager;
     
     if (pm === 'unknown') {
       throw createPackageManagerError(
         'No supported package manager found',
-        'Supported package managers: apt, dnf, yum, pacman, apk'
+        'Supported package managers: apt, dnf, yum, pacman, apk, zypper, brew'
+      );
+    }
+    if (osInfo.platform === 'windows') {
+      throw createPackageManagerError(
+        'Package management on Windows hosts is not supported by this tool yet',
+        'Use winget/choco manually or install via other Windows package workflows'
       );
     }
     
@@ -52,7 +58,11 @@ export async function ensurePackage(
     const installCommand = getInstallCommand(pm, packageName);
     logger.debug('Installing package', { sessionId, packageName, command: installCommand });
     
-    const result = await execSudo(sessionId, installCommand, sudoPassword);
+    const runInstaller = pm === 'brew'
+      ? () => execCommand(sessionId, installCommand)
+      : () => execSudo(sessionId, installCommand, sudoPassword);
+
+    const result = await runInstaller();
     
     const packageResult: PackageResult = {
       ok: result.code === 0,
@@ -94,9 +104,23 @@ export async function ensureService(
   
   try {
     // Detect init system
-    const osInfo = await detectOS(session.ssh);
+    const osInfo = await sessionManager.getOSInfo(sessionId);
     const initSystem = osInfo.init;
     
+    if (initSystem === 'launchd') {
+      throw createSudoError(
+        'launchd services are not managed by this tool',
+        'Use launchctl directly on macOS hosts'
+      );
+    }
+
+    if (initSystem === 'windows-service') {
+      throw createSudoError(
+        'Windows services are not managed by this tool',
+        'Use sc.exe or PowerShell to manage Windows services'
+      );
+    }
+
     if (initSystem === 'unknown') {
       throw createSudoError(
         'No supported init system found',
@@ -188,6 +212,7 @@ export async function ensureLinesInFile(
   logger.debug('Ensuring lines in file', { sessionId, filePath, lineCount: lines.length });
   
   try {
+    const osInfo = await sessionManager.getOSInfo(sessionId);
     let fileContent = '';
     let fileExists = false;
     
@@ -230,7 +255,9 @@ export async function ensureLinesInFile(
     } catch (error) {
       if (sudoPassword) {
         // Try with sudo by writing to temp file and moving
-        const tempFile = `/tmp/ssh-mcp-${Date.now()}.tmp`;
+        const tempDir = resolveRemoteTempDir(osInfo);
+        const baseTempDir = tempDir.replace(/\/+$/, '');
+        const tempFile = `${baseTempDir}/ssh-mcp-${Date.now()}.tmp`;
         await writeFile(sessionId, tempFile, newContent);
         
         const moveResult = await execSudo(
@@ -279,6 +306,7 @@ export async function applyPatch(
   logger.debug('Applying patch to file', { sessionId, filePath });
   
   try {
+    const osInfo = await sessionManager.getOSInfo(sessionId);
     // Check if patch command is available
     const hasPatch = await commandExists(sessionId, 'patch');
     if (!hasPatch) {
@@ -289,7 +317,9 @@ export async function applyPatch(
     }
     
     // Write patch to temporary file
-    const tempPatchFile = `/tmp/ssh-mcp-patch-${Date.now()}.patch`;
+    const tempDir = resolveRemoteTempDir(osInfo);
+    const baseTempDir = tempDir.replace(/\/+$/, '');
+    const tempPatchFile = `${baseTempDir}/ssh-mcp-patch-${Date.now()}.patch`;
     await writeFile(sessionId, tempPatchFile, diff);
     
     try {
@@ -337,7 +367,10 @@ export async function applyPatch(
     } finally {
       // Clean up temporary patch file
       try {
-        await execCommand(sessionId, `rm -f ${tempPatchFile}`);
+        const cleanupCommand = osInfo.platform === 'windows'
+          ? `Remove-Item -Path ${tempPatchFile} -Force -ErrorAction SilentlyContinue`
+          : `rm -f ${tempPatchFile}`;
+        await execCommand(sessionId, cleanupCommand);
       } catch (error) {
         logger.warn('Failed to clean up temporary patch file', { tempPatchFile, error });
       }
@@ -355,7 +388,7 @@ export async function applyPatch(
 async function checkPackageInstalled(
   sessionId: string,
   packageName: string,
-  pm: string
+  pm: PackageManager
 ): Promise<boolean> {
   let checkCommand: string;
   
@@ -373,6 +406,12 @@ async function checkPackageInstalled(
     case 'apk':
       checkCommand = `apk info -e ${packageName}`;
       break;
+    case 'zypper':
+      checkCommand = `zypper se -i ${packageName}`;
+      break;
+    case 'brew':
+      checkCommand = `brew list --versions ${packageName}`;
+      break;
     default:
       return false;
   }
@@ -388,7 +427,7 @@ async function checkPackageInstalled(
 /**
  * Gets the install command for the appropriate package manager
  */
-function getInstallCommand(pm: string, packageName: string): string {
+function getInstallCommand(pm: PackageManager, packageName: string): string {
   switch (pm) {
     case 'apt':
       return `apt-get update && apt-get install -y ${packageName}`;
@@ -400,6 +439,10 @@ function getInstallCommand(pm: string, packageName: string): string {
       return `pacman -S --noconfirm ${packageName}`;
     case 'apk':
       return `apk add ${packageName}`;
+    case 'zypper':
+      return `zypper install -y ${packageName}`;
+    case 'brew':
+      return `brew install ${packageName}`;
     default:
       throw createPackageManagerError(`Unsupported package manager: ${pm}`);
   }

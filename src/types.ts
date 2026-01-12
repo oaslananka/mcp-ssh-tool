@@ -95,13 +95,34 @@ export interface DirListResult {
 /**
  * OS detection result
  */
+export type Platform = 'linux' | 'darwin' | 'windows' | 'unknown';
+
+export type PackageManager =
+  | 'apt'
+  | 'dnf'
+  | 'yum'
+  | 'pacman'
+  | 'apk'
+  | 'zypper'
+  | 'brew'
+  | 'choco'
+  | 'winget'
+  | 'unknown';
+
+export type InitSystem = 'systemd' | 'service' | 'launchd' | 'windows-service' | 'unknown';
+
+export type ShellType = 'bash' | 'sh' | 'powershell' | 'cmd' | 'unknown';
+
 export interface OSInfo {
+  platform: Platform;
   distro: string;
   version: string;
   arch: string;
   shell: string;
-  packageManager: 'apt' | 'dnf' | 'yum' | 'pacman' | 'apk' | 'unknown';
-  init: 'systemd' | 'service' | 'unknown';
+  packageManager: PackageManager;
+  init: InitSystem;
+  defaultShell?: ShellType;
+  tempDir?: string;
 }
 
 /**

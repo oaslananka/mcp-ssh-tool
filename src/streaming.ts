@@ -6,6 +6,7 @@
 
 import { sessionManager } from './session.js';
 import { logger } from './logging.js';
+import { buildRemoteCommand } from './shell.js';
 
 /**
  * Stream output chunk
@@ -53,28 +54,14 @@ export async function execWithStreaming(options: StreamOptions): Promise<StreamR
         throw new Error(`Session ${sessionId} not found or expired`);
     }
 
+    const osInfo = await sessionManager.getOSInfo(sessionId);
     const startTime = Date.now();
     const chunks: StreamChunk[] = [];
     let fullStdout = '';
     let fullStderr = '';
 
     return new Promise((resolve, reject) => {
-        // Build the command
-        let fullCommand = command;
-
-        if (env && Object.keys(env).length > 0) {
-            const envVars = Object.entries(env)
-                .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
-                .join(' ');
-            fullCommand = `${envVars} ${command}`;
-        }
-
-        if (cwd) {
-            fullCommand = `cd ${JSON.stringify(cwd)} && ${fullCommand}`;
-        }
-
-        // Use shell for streaming
-        const shellCommand = `bash -c ${JSON.stringify(fullCommand)} 2>&1`;
+        const shellCommand = buildRemoteCommand(command, osInfo, cwd, env);
 
         session.ssh.execCommand(shellCommand, {
             onStdout: (chunk: Buffer) => {

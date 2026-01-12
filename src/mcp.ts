@@ -24,7 +24,6 @@ import {
   ensureLinesInFile,
   applyPatch
 } from './ensure.js';
-import { detectOS } from './detect.js';
 import { logger, redactSensitiveData } from './logging.js';
 import { getConfiguredHosts, resolveSSHHost } from './ssh-config.js';
 import { addSafetyWarningToResult } from './safety.js';
@@ -48,6 +47,29 @@ import {
   PatchApplySchema
 } from './types.js';
 
+const TOOL_ALIASES: Record<string, string> = {
+  ssh_openSession: 'ssh.openSession',
+  ssh_closeSession: 'ssh.closeSession',
+  proc_exec: 'proc.exec',
+  proc_sudo: 'proc.sudo',
+  fs_read: 'fs.read',
+  fs_write: 'fs.write',
+  fs_stat: 'fs.stat',
+  fs_list: 'fs.list',
+  fs_mkdirp: 'fs.mkdirp',
+  fs_rmrf: 'fs.rmrf',
+  fs_rename: 'fs.rename',
+  ensure_package: 'ensure.package',
+  ensure_service: 'ensure.service',
+  ensure_linesInFile: 'ensure.linesInFile',
+  patch_apply: 'patch.apply',
+  os_detect: 'os.detect',
+  ssh_listSessions: 'ssh.listSessions',
+  ssh_ping: 'ssh.ping',
+  ssh_listConfiguredHosts: 'ssh.listConfiguredHosts',
+  ssh_resolveHost: 'ssh.resolveHost'
+};
+
 /**
  * SSH MCP Server implementation
  */
@@ -58,7 +80,7 @@ export class SSHMCPServer {
     this.server = new Server(
       {
         name: 'ssh-mcp-server',
-        version: '1.0.0',
+        version: '1.2.0',
       },
       {
         capabilities: {
@@ -78,7 +100,7 @@ export class SSHMCPServer {
         tools: [
           // Session management
           {
-            name: 'ssh_openSession',
+            name: 'ssh.openSession',
             description: 'Opens a new SSH session with authentication',
             inputSchema: {
               type: 'object',
@@ -103,7 +125,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'ssh_closeSession',
+            name: 'ssh.closeSession',
             description: 'Closes an SSH session',
             inputSchema: {
               type: 'object',
@@ -116,7 +138,7 @@ export class SSHMCPServer {
 
           // Process execution
           {
-            name: 'proc_exec',
+            name: 'proc.exec',
             description: 'Executes a command on the remote system',
             inputSchema: {
               type: 'object',
@@ -130,7 +152,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'proc_sudo',
+            name: 'proc.sudo',
             description: 'Executes a command with sudo privileges',
             inputSchema: {
               type: 'object',
@@ -146,7 +168,7 @@ export class SSHMCPServer {
 
           // File system operations
           {
-            name: 'fs_read',
+            name: 'fs.read',
             description: 'Reads a file from the remote system',
             inputSchema: {
               type: 'object',
@@ -159,7 +181,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'fs_write',
+            name: 'fs.write',
             description: 'Writes data to a file on the remote system',
             inputSchema: {
               type: 'object',
@@ -173,7 +195,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'fs_stat',
+            name: 'fs.stat',
             description: 'Gets file or directory statistics',
             inputSchema: {
               type: 'object',
@@ -185,7 +207,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'fs_list',
+            name: 'fs.list',
             description: 'Lists directory contents',
             inputSchema: {
               type: 'object',
@@ -199,7 +221,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'fs_mkdirp',
+            name: 'fs.mkdirp',
             description: 'Creates directories recursively',
             inputSchema: {
               type: 'object',
@@ -212,7 +234,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'fs_rmrf',
+            name: 'fs.rmrf',
             description: 'Removes files or directories recursively',
             inputSchema: {
               type: 'object',
@@ -224,7 +246,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'fs_rename',
+            name: 'fs.rename',
             description: 'Renames or moves a file/directory',
             inputSchema: {
               type: 'object',
@@ -239,7 +261,7 @@ export class SSHMCPServer {
 
           // High-level automation
           {
-            name: 'ensure_package',
+            name: 'ensure.package',
             description: 'Ensures a package is installed or removed',
             inputSchema: {
               type: 'object',
@@ -252,7 +274,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'ensure_service',
+            name: 'ensure.service',
             description: 'Ensures a service is in the desired state',
             inputSchema: {
               type: 'object',
@@ -265,7 +287,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'ensure_linesInFile',
+            name: 'ensure.linesInFile',
             description: 'Ensures specific lines are present or absent in a file',
             inputSchema: {
               type: 'object',
@@ -279,7 +301,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'patch_apply',
+            name: 'patch.apply',
             description: 'Applies a patch to a file',
             inputSchema: {
               type: 'object',
@@ -292,7 +314,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'os_detect',
+            name: 'os.detect',
             description: 'Detects operating system and environment information',
             inputSchema: {
               type: 'object',
@@ -305,7 +327,7 @@ export class SSHMCPServer {
 
           // Session utilities
           {
-            name: 'ssh_listSessions',
+            name: 'ssh.listSessions',
             description: 'Lists all active SSH sessions with their details',
             inputSchema: {
               type: 'object',
@@ -314,7 +336,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'ssh_ping',
+            name: 'ssh.ping',
             description: 'Checks if an SSH session is still alive and responsive',
             inputSchema: {
               type: 'object',
@@ -325,7 +347,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'ssh_listConfiguredHosts',
+            name: 'ssh.listConfiguredHosts',
             description: 'Lists all hosts configured in ~/.ssh/config',
             inputSchema: {
               type: 'object',
@@ -334,7 +356,7 @@ export class SSHMCPServer {
             }
           },
           {
-            name: 'ssh_resolveHost',
+            name: 'ssh.resolveHost',
             description: 'Resolves a host alias from ~/.ssh/config to connection parameters',
             inputSchema: {
               type: 'object',
@@ -351,24 +373,25 @@ export class SSHMCPServer {
     // Handle tool calls
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
+      const toolName = TOOL_ALIASES[name] ?? name;
 
       try {
-        switch (name) {
-          case 'ssh_openSession': {
+        switch (toolName) {
+          case 'ssh.openSession': {
             const params = ConnectionParamsSchema.parse(args);
             const result = await sessionManager.openSession(params);
             logger.info('SSH session opened', { sessionId: result.sessionId, host: redactSensitiveData(params.host) });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'ssh_closeSession': {
+          case 'ssh.closeSession': {
             const { sessionId } = SessionIdSchema.parse(args);
             const result = await sessionManager.closeSession(sessionId);
             logger.info('SSH session closed', { sessionId });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'proc_exec': {
+          case 'proc.exec': {
             const params = ExecSchema.parse(args);
             const result = await execCommand(
               params.sessionId,
@@ -383,7 +406,7 @@ export class SSHMCPServer {
             return { content: [{ type: 'text', text: JSON.stringify(resultWithWarning, null, 2) }] };
           }
 
-          case 'proc_sudo': {
+          case 'proc.sudo': {
             const params = SudoSchema.parse(args);
             const result = await execSudo(params.sessionId, params.command, params.password, params.cwd, params.timeoutMs);
             // Add safety warning (never blocks, only warns)
@@ -392,95 +415,91 @@ export class SSHMCPServer {
             return { content: [{ type: 'text', text: JSON.stringify(resultWithWarning, null, 2) }] };
           }
 
-          case 'fs_read': {
+          case 'fs.read': {
             const params = FSReadSchema.parse(args);
             const result = await readFile(params.sessionId, params.path, params.encoding);
             logger.info('File read', { sessionId: params.sessionId, path: params.path });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'fs_write': {
+          case 'fs.write': {
             const params = FSWriteSchema.parse(args);
             const result = await writeFile(params.sessionId, params.path, params.data, params.mode);
             logger.info('File written', { sessionId: params.sessionId, path: params.path });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'fs_stat': {
+          case 'fs.stat': {
             const params = FSStatSchema.parse(args);
             const result = await statFile(params.sessionId, params.path);
             logger.info('Path stat', { sessionId: params.sessionId, path: params.path });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'fs_list': {
+          case 'fs.list': {
             const params = FSListSchema.parse(args);
             const result = await listDirectory(params.sessionId, params.path, params.page, params.limit);
             logger.info('Directory listed', { sessionId: params.sessionId, path: params.path });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'fs_mkdirp': {
+          case 'fs.mkdirp': {
             const params = FSPathSchema.parse(args);
             const result = await makeDirectories(params.sessionId, params.path);
             logger.info('Directories created', { sessionId: params.sessionId, path: params.path });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'fs_rmrf': {
+          case 'fs.rmrf': {
             const params = FSPathSchema.parse(args);
             const result = await removeRecursive(params.sessionId, params.path);
             logger.info('Path removed', { sessionId: params.sessionId, path: params.path });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'fs_rename': {
+          case 'fs.rename': {
             const params = FSRenameSchema.parse(args);
             const result = await renameFile(params.sessionId, params.from, params.to);
             logger.info('Path renamed', { sessionId: params.sessionId, from: params.from, to: params.to });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'ensure_package': {
+          case 'ensure.package': {
             const params = EnsurePackageSchema.parse(args);
             const result = await ensurePackage(params.sessionId, params.name, params.sudoPassword);
             logger.info('Package ensured', { sessionId: params.sessionId, name: params.name });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'ensure_service': {
+          case 'ensure.service': {
             const params = EnsureServiceSchema.parse(args);
             const result = await ensureService(params.sessionId, params.name, params.state, params.sudoPassword);
             logger.info('Service ensured', { sessionId: params.sessionId, name: params.name, state: params.state });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'ensure_linesInFile': {
+          case 'ensure.linesInFile': {
             const params = EnsureLinesSchema.parse(args);
             const result = await ensureLinesInFile(params.sessionId, params.path, params.lines, params.createIfMissing, params.sudoPassword);
             logger.info('Lines ensured in file', { sessionId: params.sessionId, path: params.path });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'patch_apply': {
+          case 'patch.apply': {
             const params = PatchApplySchema.parse(args);
             const result = await applyPatch(params.sessionId, params.path, params.diff, params.sudoPassword);
             logger.info('Patch applied', { sessionId: params.sessionId, path: params.path });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'os_detect': {
+          case 'os.detect': {
             const { sessionId } = SessionIdSchema.parse(args);
-            const session = sessionManager.getSession(sessionId);
-            if (!session) {
-              throw new Error(`Session ${sessionId} not found or expired`);
-            }
-            const result = await detectOS(session.ssh);
+            const result = await sessionManager.getOSInfo(sessionId);
             logger.info('OS detected', { sessionId });
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'ssh_listSessions': {
+          case 'ssh.listSessions': {
             const sessions = sessionManager.getActiveSessions();
             const result = {
               count: sessions.length,
@@ -499,7 +518,7 @@ export class SSHMCPServer {
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'ssh_ping': {
+          case 'ssh.ping': {
             const { sessionId } = SessionIdSchema.parse(args);
             const session = sessionManager.getSession(sessionId);
             if (!session) {
@@ -535,7 +554,7 @@ export class SSHMCPServer {
             }
           }
 
-          case 'ssh_listConfiguredHosts': {
+          case 'ssh.listConfiguredHosts': {
             const hosts = await getConfiguredHosts();
             const result = {
               count: hosts.length,
@@ -545,7 +564,7 @@ export class SSHMCPServer {
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
           }
 
-          case 'ssh_resolveHost': {
+          case 'ssh.resolveHost': {
             const { hostAlias } = z.object({ hostAlias: z.string() }).parse(args);
             const resolved = await resolveSSHHost(hostAlias);
             logger.info('Host resolved', { hostAlias, resolved: resolved.host });
@@ -556,7 +575,7 @@ export class SSHMCPServer {
             throw new Error(`Unknown tool: ${name}`);
         }
       } catch (error: any) {
-        logger.error('Tool execution failed', { tool: name, error: error.message });
+        logger.error('Tool execution failed', { tool: toolName, error: error.message });
         return {
           content: [{ type: 'text', text: `Error: ${error.message}` }],
           isError: true

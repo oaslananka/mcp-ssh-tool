@@ -3,9 +3,10 @@ import SftpClient from 'ssh2-sftp-client';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { ConnectionParams, SessionInfo, SessionResult, AuthConfig } from './types.js';
+import { ConnectionParams, SessionInfo, SessionResult, AuthConfig, OSInfo } from './types.js';
 import { createAuthError, createConnectionError, createTimeoutError } from './errors.js';
 import { logger } from './logging.js';
+import { detectOS } from './detect.js';
 
 /**
  * SSH session with connection and SFTP client
@@ -15,6 +16,7 @@ export interface SSHSession {
   sftp: SftpClient;
   info: SessionInfo;
   connectionParams?: ConnectionParams; // For auto-reconnect
+  osInfo?: OSInfo;
 }
 
 /**
@@ -32,6 +34,24 @@ export class SessionManager {
     setInterval(() => {
       this.cleanupExpiredSessions();
     }, 60000);
+  }
+
+  /**
+   * Gets cached OS info for a session (detects and caches if needed)
+   */
+  async getOSInfo(sessionId: string): Promise<OSInfo> {
+    const session = this.getSession(sessionId);
+    if (!session) {
+      throw new Error(`Session ${sessionId} not found or expired`);
+    }
+
+    if (session.osInfo) {
+      return session.osInfo;
+    }
+
+    const osInfo = await detectOS(session.ssh);
+    session.osInfo = osInfo;
+    return osInfo;
   }
 
   /**
