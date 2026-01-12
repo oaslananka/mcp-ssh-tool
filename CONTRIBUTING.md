@@ -119,6 +119,20 @@ Workflow runs are retained for 14 days. To configure this in the GitHub UI:
 
 Note: The "Cancel in-progress runs" feature is already enabled via the concurrency configuration in the workflow file.
 
+## Releasing
+
+Releases are automated via GitHub Actions. To create a new release:
+
+1. Update `CHANGELOG.md` with the new version and changes.
+2. Update version in `package.json`.
+3. Commit and push the changes.
+4. Create and push a tag: `git tag v1.2.5 && git push origin v1.2.5`
+
+The publish workflow will:
+- Run tests and build
+- Publish to npm (requires `NPM_TOKEN` secret)
+- Create a GitHub Release
+
 ## Project Structure
 
 ```
