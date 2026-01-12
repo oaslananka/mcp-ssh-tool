@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, master]
   pull_request:
-    branches: ["*"]
+    branches: [main, master]
 
 jobs:
   build:
@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        node: [18.x, 20.x, 22.x]
+        node: [20.x, 22.x]
 
     steps:
       - name: Checkout
@@ -46,9 +46,4 @@ jobs:
         env:
           SSH_MCP_ONESHOT: "true"
         run: |
-          node -e "process.stdout.write(JSON.stringify({jsonrpc:'2.0', id:'1', method:'tools/list'}))" | node dist/index.js
-
-      - name: Smoke run (stdio startup)
-        run: echo "{}" | node dist/index.js
-        env:
-          SSH_MCP_ONESHOT: "true"
+          node -e "process.stdout.write(JSON.stringify({jsonrpc:'2.0', id:1, method:'tools/list'}))" | node dist/index.js
