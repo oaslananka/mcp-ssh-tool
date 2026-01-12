@@ -1,6 +1,6 @@
 {
   "name": "mcp-ssh-tool",
-  "version": "1.2.1",
+  "version": "1.2.3",
   "description": "Model Context Protocol (MCP) SSH client server for remote automation",
   "type": "module",
   "main": "dist/index.js",
@@ -46,7 +46,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/oaslananka/mcp-ssh-tool.git"
+    "url": "git+https://github.com/oaslananka/mcp-ssh-tool.git"
   },
   "homepage": "https://github.com/oaslananka/mcp-ssh-tool#readme",
   "bugs": {
