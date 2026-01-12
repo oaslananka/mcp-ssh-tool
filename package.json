@@ -1,6 +1,6 @@
 {
   "name": "mcp-ssh-tool",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Model Context Protocol (MCP) SSH client server for remote automation",
   "type": "module",
   "main": "dist/index.js",
