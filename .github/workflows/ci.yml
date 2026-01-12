@@ -37,6 +37,15 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Smoke CLI (help/version)
+        run: |
+          node dist/index.js --help
+          node dist/index.js --version
+
+      - name: Smoke listTools
+        run: |
+          echo "{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"tools/list\"}" | node dist/index.js
+
       - name: Smoke run (stdio startup)
         run: echo "{}" | node dist/index.js
         env:

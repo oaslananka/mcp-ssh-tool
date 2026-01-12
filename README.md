@@ -105,6 +105,14 @@ npm run build
 npm link
 ```
 
+### CLI Flags
+
+- `--help` / `-h`: Show usage and examples.
+- `--version` / `-v`: Print version.
+- `--stdio`: Force stdio mode (default).
+
+**Note:** This is an MCP stdio server. The terminal is not an interactive shell; use an MCP client (Claude Desktop, VS Code MCP, etc.) or send JSON-RPC over stdio.
+
 ### Platform Notes
 
 - **Linux / macOS:** Uses POSIX shell wrappers with safe quoting. Default temp directory: `/tmp`.
