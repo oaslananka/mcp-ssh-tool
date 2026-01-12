@@ -100,6 +100,25 @@ docs(readme): update installation instructions
 5. Run linter and tests
 6. Submit PR with clear description
 
+## Continuous Integration (CI)
+
+This project uses GitHub Actions for continuous integration. The CI workflow runs on pull requests and pushes to the `main` and `master` branches, but skips runs for documentation-only changes (e.g., updates to `README.md`, `.gitattributes`, or any `*.md` files). CI will still run when code files, tests, or workflow configurations are modified.
+
+### Concurrency and Run Cancellation
+
+To optimize resource usage and reduce noise, the CI workflow uses concurrency controls:
+- Only the latest run per branch/ref is kept active.
+- In-progress runs on the same ref are automatically canceled when a new commit is pushed.
+
+### Workflow Run Retention
+
+Workflow runs are retained for 14 days. To configure this in the GitHub UI:
+1. Go to your repository's **Settings**.
+2. Navigate to **Actions** → **General**.
+3. Under **Workflow run retention**, set it to 14 days.
+
+Note: The "Cancel in-progress runs" feature is already enabled via the concurrency configuration in the workflow file.
+
 ## Project Structure
 
 ```
